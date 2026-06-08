@@ -4,6 +4,7 @@
 */
 import React from 'react';
 import Modal from './Modal';
+import { MAX_USER_TOPIC_LENGTH } from '../lib/constants';
 import { useAgent, useUI, useUser } from '../lib/state';
 
 /**
@@ -57,12 +58,13 @@ export default function UserSettings() {
 
           <div>
             <p>{topicLabel}</p>
-            <input
-              type="text"
+            <textarea
+              rows={4}
               name="topic"
               value={topic}
               onChange={e => setTopic(e.target.value)}
               placeholder={topicPlaceholder}
+              maxLength={MAX_USER_TOPIC_LENGTH}
             />
           </div>
 

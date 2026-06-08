@@ -25,6 +25,7 @@ import {
   Reza,
   Ines,
 } from './presets/agents';
+import { MAX_USER_TOPIC_LENGTH } from './constants';
 import { themes } from './themes';
 
 /**
@@ -59,7 +60,7 @@ export const useUser = create<
   topic: '',
   setName: name => set({ name }),
   setInfo: info => set({ info }),
-  setTopic: topic => set({ topic }),
+  setTopic: topic => set({ topic: topic.slice(0, MAX_USER_TOPIC_LENGTH) }),
   reset: () => set({ name: '', info: '', topic: '' }),
 }));
 

@@ -22,3 +22,6 @@
  * Default Live API model to use
  */
 export const DEFAULT_LIVE_API_MODEL = 'gemini-2.5-flash-native-audio-preview-09-2025';
+
+/** Maximum characters allowed in the session topic field. */
+export const MAX_USER_TOPIC_LENGTH = 10_000;
