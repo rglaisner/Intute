@@ -75,7 +75,7 @@ export default function LegalDisclaimer({ onAcknowledge }: LegalDisclaimerProps)
             </a>
             .
           </li>
-          <li>Gemini can make mistakes, so double-check it.</li>
+          <li>AI can make mistakes, so double-check it.</li>
         </ul>
         <button onClick={onAcknowledge}>OK</button>
       </div>

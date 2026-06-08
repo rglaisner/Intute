@@ -27,9 +27,9 @@ export default function UserSettings() {
     setShowUserConfig(false);
   }
 
-  const topicLabel = `What subject are we studying today, ${name || 'friend'}?`;
+  const topicLabel = `What topic are we studying today, ${name || 'friend'}?`;
   const topicPlaceholder =
-    'e.g., Photosynthesis, calculus, creative writing, the history of Rome...';
+    'e.g., Photosynthesis, Kama Sutra, creative writing, the history of Rome...';
 
   return (
     <Modal onClose={() => setShowUserConfig(false)}>
