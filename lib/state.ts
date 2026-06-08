@@ -135,6 +135,7 @@ export const useAgent = create<{
 }));
 
 export type DocumentMode = 'rendered' | 'editor';
+export type ParticipationMode = 'voice' | 'text';
 
 /**
  * `useUI` Store
@@ -164,6 +165,8 @@ export const useUI = create<{
   setAgentState: (state: string | null) => void;
   documentMode: DocumentMode;
   setDocumentMode: (mode: DocumentMode) => void;
+  participationMode: ParticipationMode;
+  setParticipationMode: (mode: ParticipationMode) => void;
   imageTimeoutSeconds: number;
   resetCounter: number;
   reset: () => void;
@@ -193,6 +196,8 @@ export const useUI = create<{
   setAgentState: (state: string | null) => set({ agentState: state }),
   documentMode: 'rendered',
   setDocumentMode: (mode: DocumentMode) => set({ documentMode: mode }),
+  participationMode: 'voice',
+  setParticipationMode: (mode: ParticipationMode) => set({ participationMode: mode }),
   imageTimeoutSeconds: 300,
   resetCounter: 0,
   reset: () => set(state => ({
@@ -203,9 +208,30 @@ export const useUI = create<{
     showHelpModal: false,
     agentState: null,
     documentMode: 'rendered',
+    participationMode: 'voice',
     resetCounter: state.resetCounter + 1,
   })),
 }));
+
+/**
+ * `useParticipationStore`
+ * Bridges typed user messages from UI components to KeynoteCompanion's turn logic.
+ */
+export const useParticipationStore = create<{
+  registerTextSendHandler: (handler: ((text: string) => void) | null) => void;
+  sendUserText: (text: string) => void;
+}>(() => {
+  let textSendHandler: ((text: string) => void) | null = null;
+
+  return {
+    registerTextSendHandler: (handler) => {
+      textSendHandler = handler;
+    },
+    sendUserText: (text) => {
+      textSendHandler?.(text);
+    },
+  };
+});
 
 /**
  * `useLogStore` Store

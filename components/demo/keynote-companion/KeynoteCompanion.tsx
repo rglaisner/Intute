@@ -35,6 +35,7 @@ import {
   useInsertStore,
   useLogStore,
   usePerfLogStore,
+  useParticipationStore,
   useUI,
   useUser,
   useSessionStore,
@@ -627,7 +628,9 @@ export default function KeynoteCompanion() {
     suppressStaleAgentResponses,
     documentMode,
     imageTimeoutSeconds,
+    participationMode,
   } = useUI();
+  const { registerTextSendHandler } = useParticipationStore();
   const { inserts, addInsert, updateInsert, removeInsert } = useInsertStore();
   const {
     addTranscriptEntry,
@@ -674,6 +677,9 @@ export default function KeynoteCompanion() {
   const processedAgentTurnIdRef = useRef(0);
   const isSuppressingAgentOutputRef = useRef(false);
   const isAgentSpeakingRef = useRef(false);
+  const typedUserMessageRef = useRef<string | null>(null);
+  const userTurnIdIncrementedForCurrentInputRef = useRef(false);
+  const prevParticipationModeRef = useRef(participationMode);
   const userRef = useRef(user);
   userRef.current = user;
   const agentRef = useRef(current);
@@ -858,6 +864,66 @@ export default function KeynoteCompanion() {
       });
     }
   }, [current.id, connected, addTranscriptEntry, current.name, current.languageLabel]);
+
+  const handleSendUserText = useCallback(
+    (rawText: string) => {
+      const message = rawText.trim();
+      if (!message || !connected || participationMode !== 'text') {
+        return;
+      }
+
+      if (isAgentSpeakingRef.current) {
+        selfInterruptionDetectedRef.current = true;
+      }
+
+      typedUserMessageRef.current = message;
+      currentUserText.current = message;
+      userTurnIdIncrementedForCurrentInputRef.current = true;
+      latestUserTurnIdRef.current++;
+      turnCounterRef.current += 1;
+      hasLoggedFirstUserTextThisTurnRef.current = false;
+      hasLoggedFirstAgentTextThisTurnRef.current = false;
+      hasLoggedFirstAgentAudioThisTurnRef.current = false;
+
+      addPerfLog({
+        turn: turnCounterRef.current,
+        event: 'User Text: Message Sent',
+        details: { text: message, turnId: latestUserTurnIdRef.current },
+      });
+      useLogStore.getState().addLog({
+        api: 'User Text (Sent)',
+        inputSize: message.length,
+        outputSize: 'N/A',
+        status: 'success',
+        prompt: message,
+        promptVersion: promptVersionRef.current,
+      });
+
+      setAgentState('Thinking');
+      client.send([{ text: message }], true);
+    },
+    [connected, participationMode, client, setAgentState, addPerfLog],
+  );
+
+  useEffect(() => {
+    registerTextSendHandler(handleSendUserText);
+    return () => registerTextSendHandler(null);
+  }, [handleSendUserText, registerTextSendHandler]);
+
+  useEffect(() => {
+    if (
+      connected &&
+      prevParticipationModeRef.current === 'voice' &&
+      participationMode === 'text'
+    ) {
+      client.send([
+        {
+          text: '(System message: The user has switched to written participation. They will type their messages instead of speaking. Continue the lesson normally.)',
+        },
+      ]);
+    }
+    prevParticipationModeRef.current = participationMode;
+  }, [participationMode, connected, client]);
 
   // Declarations for the functions the agent can call.
   const getContextDeclaration: FunctionDeclaration = {
@@ -1370,6 +1436,9 @@ export default function KeynoteCompanion() {
     };
 
     const handleInputTranscription = (text: string) => {
+      if (typedUserMessageRef.current) {
+        return;
+      }
       if (!hasLoggedFirstUserTextThisTurnRef.current && text.trim()) {
         addPerfLog({
           turn: turnCounterRef.current,
@@ -1445,8 +1514,12 @@ export default function KeynoteCompanion() {
       }
 
       if (userFinal) {
-        latestUserTurnIdRef.current++;
-        turnCounterRef.current += 1;
+        if (!userTurnIdIncrementedForCurrentInputRef.current) {
+          latestUserTurnIdRef.current++;
+          turnCounterRef.current += 1;
+        }
+        userTurnIdIncrementedForCurrentInputRef.current = false;
+        typedUserMessageRef.current = null;
         hasLoggedFirstAgentAudioThisTurnRef.current = false;
         hasLoggedFirstAgentTextThisTurnRef.current = false;
         hasLoggedFirstUserTextThisTurnRef.current = false;

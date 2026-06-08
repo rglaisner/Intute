@@ -105,6 +105,15 @@ export default function HelpModal() {
               to mute or unmute yourself at any time.
             </li>
             <li>
+              <strong>Type instead of speak:</strong> If you cannot use a microphone,
+              click the{' '}
+              <strong>
+                <span className="icon icon-in-text">keyboard</span>Keyboard button
+              </strong>{' '}
+              to switch to written participation. A text box will appear so you can
+              type your questions — your teacher will still respond with voice.
+            </li>
+            <li>
               <strong>Pause Session:</strong> Click the{' '}
               <strong>
                 <span className="icon icon-in-text">pause</span>Pause button

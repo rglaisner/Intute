@@ -602,6 +602,72 @@ header {
   white-space: nowrap;
 }
 
+.participation-mode-button.active {
+  background-color: var(--theme-accent);
+  color: white;
+}
+.participation-mode-button.active:hover {
+  filter: brightness(1.1);
+  background-color: var(--theme-accent);
+}
+
+.text-participation-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background-color: var(--theme-surface);
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+}
+
+.text-participation-input {
+  flex: 1;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 24px;
+  font-size: 16px;
+  background-color: var(--theme-bg);
+  color: var(--theme-text);
+  outline: none;
+}
+.text-participation-input:focus {
+  border-color: var(--theme-accent);
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+}
+
+.text-participation-send {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--theme-accent);
+  color: white;
+  transition: filter 0.2s, transform 0.1s;
+  box-shadow: var(--shadow-sm);
+}
+.text-participation-send:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+.text-participation-send:active:not(:disabled) {
+  transform: scale(0.95);
+}
+.text-participation-send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.text-participation-send .material-symbols-outlined {
+  font-size: 24px;
+}
+
 /* ==========================================================================
    5. FLOATING AVATAR & HALO EFFECTS
    ========================================================================== */

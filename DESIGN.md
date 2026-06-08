@@ -28,11 +28,12 @@ The core value proposition is "Document-First Teaching": the AI is instructed to
 ## 3. Core Functional Loops
 
 ### 3.1 The Live Agent Loop
-The interaction follows a continuous WebSocket-based cycle:
-1.  **Input**: `AudioRecorder` captures PCM audio at 16kHz. Chunks are base64-encoded and sent via `sendRealtimeInput`.
-2.  **Processing**: The Gemini Live API processes audio natively. Simultaneously, it streams back an `inputTranscription`.
-3.  **Response**: The model streams back PCM audio (played via `AudioStreamer`) and text parts.
-4.  **Tool Orchestration**: The model executes tools to sync with the UI:
+The interaction follows a continuous WebSocket-based cycle. Users can participate via **voice** (default) or **written text** (for users who cannot speak):
+1.  **Input (voice)**: `AudioRecorder` captures PCM audio at 16kHz. Chunks are base64-encoded and sent via `sendRealtimeInput`.
+2.  **Input (text)**: The user types a message in `TextParticipationBar`; `KeynoteCompanion` sends it via `client.send()` with `turnComplete: true`.
+3.  **Processing**: The Gemini Live API processes audio natively. Simultaneously, it streams back an `inputTranscription`.
+4.  **Response**: The model streams back PCM audio (played via `AudioStreamer`) and text parts.
+5.  **Tool Orchestration**: The model executes tools to sync with the UI:
     - `getContext()`: Retrieves the current document, transcript, and student info.
     - `updateDocument(content)`: Replaces the document state with new Markdown/LaTeX content.
     - `insertIllustration(prompt, style)`: Triggers a side-channel call to the Image API.

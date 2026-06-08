@@ -20,6 +20,7 @@
 
 import AgentEdit from './components/AgentEdit';
 import ControlTray from './components/console/control-tray/ControlTray';
+import TextParticipationBar from './components/console/TextParticipationBar';
 import DebugModal from './components/DebugModal';
 import ErrorScreen from './components/demo/ErrorScreen';
 import KeynoteCompanion from './components/demo/keynote-companion/KeynoteCompanion';
@@ -63,6 +64,7 @@ function AppContent() {
     showWelcomeScreen,
     agentState,
     resetCounter,
+    participationMode,
   } = useUI();
 
   const { volume, connected, isConnecting } = useLiveAPIContext();
@@ -88,6 +90,8 @@ function AppContent() {
     statusText = agentState;
   } else if (isTalking) {
     statusText = 'Speaking';
+  } else if (participationMode === 'text') {
+    statusText = 'Type to participate';
   } else {
     statusText = 'Listening';
   }
@@ -309,6 +313,7 @@ function AppContent() {
             <KeynoteCompanion key={resetCounter} />
           </div>
 
+          <TextParticipationBar />
           <ControlTray></ControlTray>
         </main>
       </div>

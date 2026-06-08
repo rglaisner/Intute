@@ -52,7 +52,7 @@ function ControlTray({ children }: ControlTrayProps) {
   );
   const firstAudioChunkSentRef = useRef(false);
 
-  const { showAgentEdit, showUserConfig } = useUI();
+  const { showAgentEdit, showUserConfig, participationMode, setParticipationMode } = useUI();
   const { addLog: addPerfLog, startNewSession } = usePerfLogStore();
   const { client, connected, connect, disconnect, isConnecting } = useLiveAPIContext();
 
@@ -120,8 +120,8 @@ function ControlTray({ children }: ControlTrayProps) {
       });
     };
 
-    // If we are connected, NOT connecting, and not muted, start recording and stream the data.
-    if (connected && !isConnecting && !muted && audioRecorder) {
+    // If we are connected, NOT connecting, not muted, and in voice mode, start recording.
+    if (connected && !isConnecting && !muted && participationMode === 'voice' && audioRecorder) {
       addPerfLog({ turn: 0, event: 'Audio Recorder: Started' });
       audioRecorder.on('data', onData);
       audioRecorder.start();
@@ -135,23 +135,47 @@ function ControlTray({ children }: ControlTrayProps) {
     return () => {
       audioRecorder.off('data', onData);
     };
-  }, [connected, isConnecting, client, muted, audioRecorder, addPerfLog]);
+  }, [connected, isConnecting, client, muted, participationMode, audioRecorder, addPerfLog]);
 
   return (
     <section className="control-tray">
       <div className={cn('button-group')}>
         <button
           className={cn('action-button mic-button', {
-            talking: isUserSpeaking && !muted && connected && !isConnecting,
+            talking: isUserSpeaking && !muted && connected && !isConnecting && participationMode === 'voice',
           })}
           onClick={() => setMuted(!muted)}
-          disabled={!connected || isConnecting}
+          disabled={!connected || isConnecting || participationMode === 'text'}
+          title={participationMode === 'text' ? 'Switch to voice mode to use the microphone' : undefined}
         >
           {!muted ? (
             <span className="material-symbols-outlined filled">mic</span>
           ) : (
             <span className="material-symbols-outlined filled">mic_off</span>
           )}
+        </button>
+        <button
+          className={cn('action-button participation-mode-button', {
+            active: participationMode === 'text',
+          })}
+          onClick={() =>
+            setParticipationMode(participationMode === 'voice' ? 'text' : 'voice')
+          }
+          disabled={!connected || isConnecting}
+          title={
+            participationMode === 'voice'
+              ? 'Switch to written participation'
+              : 'Switch to voice participation'
+          }
+          aria-label={
+            participationMode === 'voice'
+              ? 'Switch to written participation'
+              : 'Switch to voice participation'
+          }
+        >
+          <span className="material-symbols-outlined filled">
+            {participationMode === 'voice' ? 'keyboard' : 'mic'}
+          </span>
         </button>
         {children}
 
