@@ -220,8 +220,11 @@ export const useUI = create<{
 export const useParticipationStore = create<{
   registerTextSendHandler: (handler: ((text: string) => void) | null) => void;
   sendUserText: (text: string) => void;
+  registerInterruptHandler: (handler: (() => void) | null) => void;
+  interruptTeacher: () => void;
 }>(() => {
   let textSendHandler: ((text: string) => void) | null = null;
+  let interruptHandler: (() => void) | null = null;
 
   return {
     registerTextSendHandler: (handler) => {
@@ -229,6 +232,12 @@ export const useParticipationStore = create<{
     },
     sendUserText: (text) => {
       textSendHandler?.(text);
+    },
+    registerInterruptHandler: (handler) => {
+      interruptHandler = handler;
+    },
+    interruptTeacher: () => {
+      interruptHandler?.();
     },
   };
 });

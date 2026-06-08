@@ -24,7 +24,7 @@ import React, { memo, ReactNode, useEffect, useRef, useState } from 'react';
 import { AudioRecorder } from '../../../lib/audio-recorder';
 
 import { useLiveAPIContext } from '../../../contexts/LiveAPIContext';
-import { usePerfLogStore, useUI } from '../../../lib/state';
+import { usePerfLogStore, useParticipationStore, useUI } from '../../../lib/state';
 
 export type ControlTrayProps = {
   children?: ReactNode;
@@ -54,6 +54,7 @@ function ControlTray({ children }: ControlTrayProps) {
 
   const { showAgentEdit, showUserConfig, participationMode, setParticipationMode } = useUI();
   const { addLog: addPerfLog, startNewSession } = usePerfLogStore();
+  const { interruptTeacher } = useParticipationStore();
   const { client, connected, connect, disconnect, isConnecting } = useLiveAPIContext();
 
   // Reset the "first audio chunk sent" flag on disconnect to prepare for the next session.
@@ -106,6 +107,9 @@ function ControlTray({ children }: ControlTrayProps) {
   useEffect(() => {
     // The 'data' event from the AudioRecorder contains base64-encoded PCM audio.
     const onData = (base64: string) => {
+      // Stop the teacher immediately when the user starts speaking over them.
+      interruptTeacher();
+
       // Log the first audio chunk sent for performance analysis.
       if (!firstAudioChunkSentRef.current) {
         addPerfLog({ turn: 0, event: 'User Audio: First Chunk Sent', details: { size: base64.length } });
@@ -135,7 +139,7 @@ function ControlTray({ children }: ControlTrayProps) {
     return () => {
       audioRecorder.off('data', onData);
     };
-  }, [connected, isConnecting, client, muted, participationMode, audioRecorder, addPerfLog]);
+  }, [connected, isConnecting, client, muted, participationMode, audioRecorder, addPerfLog, interruptTeacher]);
 
   return (
     <section className="control-tray">

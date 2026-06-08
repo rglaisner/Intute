@@ -630,7 +630,7 @@ export default function KeynoteCompanion() {
     imageTimeoutSeconds,
     participationMode,
   } = useUI();
-  const { registerTextSendHandler } = useParticipationStore();
+  const { registerTextSendHandler, registerInterruptHandler } = useParticipationStore();
   const { inserts, addInsert, updateInsert, removeInsert } = useInsertStore();
   const {
     addTranscriptEntry,
@@ -667,6 +667,7 @@ export default function KeynoteCompanion() {
   const systemInstructionTextRef = useRef('');
   const lastTurnCompleteTimestampRef = useRef(0);
   const selfInterruptionDetectedRef = useRef(false);
+  const interruptionActiveRef = useRef(false);
   const lastSpeakerRef = useRef<'user' | 'agent' | null>(null);
   const hasSentGreetingRef = useRef(false);
   const turnCounterRef = useRef(0);
@@ -816,8 +817,44 @@ export default function KeynoteCompanion() {
       latestUserTurnIdRef.current = 0;
       processedAgentTurnIdRef.current = 0;
       isSuppressingAgentOutputRef.current = false;
+      interruptionActiveRef.current = false;
     }
   }, [connected, setAgentState]);
+
+  const syncAgentOutputSuppression = useCallback(() => {
+    const shouldSuppressStaleResponses =
+      suppressStaleAgentResponses &&
+      processedAgentTurnIdRef.current < latestUserTurnIdRef.current - 1;
+    isSuppressingAgentOutputRef.current =
+      interruptionActiveRef.current || shouldSuppressStaleResponses;
+  }, [suppressStaleAgentResponses]);
+
+  const interruptTeacherIfSpeaking = useCallback(() => {
+    const teacherActive =
+      isAgentSpeakingRef.current ||
+      currentAgentAudioChunks.current.length > 0 ||
+      currentModelText.current.trim().length > 0;
+
+    if (!teacherActive) {
+      return;
+    }
+
+    if (!interruptionActiveRef.current) {
+      addPerfLog({
+        turn: turnCounterRef.current,
+        event: 'User Action: Interrupted Teacher',
+      });
+    }
+
+    interruptionActiveRef.current = true;
+    selfInterruptionDetectedRef.current = true;
+    isSuppressingAgentOutputRef.current = true;
+    stopAudio();
+    currentModelText.current = '';
+    currentAgentAudioChunks.current = [];
+    isAgentSpeakingRef.current = false;
+    setAgentState(null);
+  }, [stopAudio, setAgentState, addPerfLog]);
 
   // This effect sends a greeting or resume prompt to the agent once the connection is established.
   useEffect(() => {
@@ -872,9 +909,7 @@ export default function KeynoteCompanion() {
         return;
       }
 
-      if (isAgentSpeakingRef.current) {
-        selfInterruptionDetectedRef.current = true;
-      }
+      interruptTeacherIfSpeaking();
 
       typedUserMessageRef.current = message;
       currentUserText.current = message;
@@ -902,13 +937,18 @@ export default function KeynoteCompanion() {
       setAgentState('Thinking');
       client.send([{ text: message }], true);
     },
-    [connected, participationMode, client, setAgentState, addPerfLog],
+    [connected, participationMode, client, setAgentState, addPerfLog, interruptTeacherIfSpeaking],
   );
 
   useEffect(() => {
     registerTextSendHandler(handleSendUserText);
     return () => registerTextSendHandler(null);
   }, [handleSendUserText, registerTextSendHandler]);
+
+  useEffect(() => {
+    registerInterruptHandler(interruptTeacherIfSpeaking);
+    return () => registerInterruptHandler(null);
+  }, [interruptTeacherIfSpeaking, registerInterruptHandler]);
 
   useEffect(() => {
     if (
@@ -1222,13 +1262,10 @@ export default function KeynoteCompanion() {
   // 5. Interruption handling.
   useEffect(() => {
     const log = useLogStore.getState().addLog;
-    const shouldSuppress =
-      suppressStaleAgentResponses &&
-      processedAgentTurnIdRef.current < latestUserTurnIdRef.current - 1;
-    if (shouldSuppress && !isSuppressingAgentOutputRef.current) {
+    syncAgentOutputSuppression();
+    if (isSuppressingAgentOutputRef.current) {
       stopAudio();
     }
-    isSuppressingAgentOutputRef.current = shouldSuppress;
 
     const flushModelTextBuffer = () => {
       if (isSuppressingAgentOutputRef.current) {
@@ -1416,6 +1453,10 @@ export default function KeynoteCompanion() {
         });
         return;
       }
+      if (!isAgentSpeakingRef.current) {
+        isAgentSpeakingRef.current = true;
+        setAgentState(null);
+      }
       currentAgentAudioChunks.current.push(data);
       if (!hasLoggedFirstAgentAudioThisTurnRef.current) {
         addPerfLog({
@@ -1447,9 +1488,7 @@ export default function KeynoteCompanion() {
         });
         hasLoggedFirstUserTextThisTurnRef.current = true;
       }
-      if (isAgentSpeakingRef.current) {
-        selfInterruptionDetectedRef.current = true;
-      }
+      interruptTeacherIfSpeaking();
       currentUserText.current += text;
     };
 
@@ -1579,7 +1618,20 @@ export default function KeynoteCompanion() {
       currentUserAudioChunks.current = [];
       currentAgentAudioChunks.current = [];
       selfInterruptionDetectedRef.current = false;
+      interruptionActiveRef.current = false;
       isAgentSpeakingRef.current = false;
+      syncAgentOutputSuppression();
+    };
+
+    const handleInterrupted = () => {
+      interruptionActiveRef.current = true;
+      selfInterruptionDetectedRef.current = true;
+      isSuppressingAgentOutputRef.current = true;
+      stopAudio();
+      currentModelText.current = '';
+      currentAgentAudioChunks.current = [];
+      isAgentSpeakingRef.current = false;
+      setAgentState(null);
     };
 
     client.on('userAudio', handleUserAudio);
@@ -1588,7 +1640,7 @@ export default function KeynoteCompanion() {
     client.on('inputTranscription', handleInputTranscription);
     client.on('outputTranscription', handleOutputTranscription);
     client.on('turncomplete', handleTurnComplete);
-    client.on('interrupted', stopAudio);
+    client.on('interrupted', handleInterrupted);
 
     return () => {
       client.off('userAudio', handleUserAudio);
@@ -1597,7 +1649,7 @@ export default function KeynoteCompanion() {
       client.off('inputTranscription', handleInputTranscription);
       client.off('outputTranscription', handleOutputTranscription);
       client.off('turncomplete', handleTurnComplete);
-      client.off('interrupted', stopAudio);
+      client.off('interrupted', handleInterrupted);
     };
   }, [
     client,
@@ -1611,6 +1663,8 @@ export default function KeynoteCompanion() {
     addTranscriptEntry,
     addAudioLogEntry,
     imageTimeoutSeconds,
+    syncAgentOutputSuppression,
+    interruptTeacherIfSpeaking,
   ]);
 
   const handleClear = () => {
